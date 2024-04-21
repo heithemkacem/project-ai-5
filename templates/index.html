@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Air Quality Model Comparison</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body >
+ 
+  <div style="display: flex; justify-content: space-evenly;">
+    {% for model_name in model_names %}
+    <div style="height: 600px; width: 600px;">
+        <canvas id="{{ model_name }}"></canvas>
+    </div>
+    {% endfor %}
+   
+</div>
+    <div style="display: flex; justify-content: space-evenly;">
+        <div style="height: 600px; width: 600px;">
+            <canvas id="rmseChart"></canvas>
+        </div>
+        <div style="height: 600px; width: 600px;">
+            <canvas id="r2Chart"></canvas>
+        </div>
+       
+    </div>
+
+
+    <script>
+        // RMSE chart data
+        var modelNames = {{ model_names|safe }};
+        var rmseValues = {{ rmse_values|safe }};
+        var r2Values = {{ r2_values|safe }};
+
+        // Render RMSE chart
+        var rmseCtx = document.getElementById('rmseChart').getContext('2d');
+        var rmseChart = new Chart(rmseCtx, {
+            type: 'bar',
+            data: {
+                labels: modelNames,
+                datasets: [{
+                    label: 'RMSE',
+                    data: rmseValues,
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Render R^2 chart
+        var r2Ctx = document.getElementById('r2Chart').getContext('2d');
+        var r2Chart = new Chart(r2Ctx, {
+            type: 'bar',
+            data: {
+                labels: modelNames,
+                datasets: [{
+                    label: 'R^2',
+                    data: r2Values,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+
+        // Actual vs Predicted AQI scatter plots
+        var actualAQI = {{ actual_aqi|safe }};
+        var predictedAQI = {{ predicted_aqi|safe }};
+
+        modelNames.forEach(function(modelName) {
+            var ctx = document.getElementById(modelName).getContext('2d');
+            var actualValues = actualAQI;
+            var predictedValues = predictedAQI[modelName];
+            
+            var data = [];
+            for (var i = 0; i < actualValues.length; i++) {
+                data.push({x: actualValues[i], y: predictedValues[i]});
+            }
+
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: modelName,
+                        data: data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Actual AQI'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Predicted AQI'
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

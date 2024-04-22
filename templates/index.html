@@ -3,92 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AQI Data Analysis</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script
-      src="https://cdn.plot.ly/plotly-2.31.1.min.js"
-      charset="utf-8"
-    ></script>
+    <title>Air Quality Analysis</title>
   </head>
   <body>
-    <h1>AQI Data Analysis</h1>
+    <h1>Air Quality Analysis</h1>
 
-    <div id="lineChart"></div>
-    <script>
-      var lineData = JSON.parse("{{ plotly_line_json|escapejs }}");
-      Plotly.newPlot("lineChart", lineData.data, lineData.layout);
-    </script>
+    {% if error_message %}
+    <p>{{ error_message }}</p>
+    {% else %}
+    <h2>Correlation Heatmap</h2>
+    <img
+      src="data:image/png;base64,{{ heatmap_base64 }}"
+      alt="Correlation Heatmap"
+    />
 
-    <div id="boxChart"></div>
-    <script>
-      var boxData = JSON.parse("{{ plotly_box_json|escapejs }}");
-      Plotly.newPlot("boxChart", boxData.data, boxData.layout);
-    </script>
+    <h2>AQI Site vs. PM2.5</h2>
+    <img
+      src="data:image/png;base64,{{ scatter_base64 }}"
+      alt="AQI Site vs. PM2.5"
+    />
 
-    <div id="scatterMatrix"></div>
-    <script>
-      var scatterData = JSON.parse("{{ scatter_matrix_json|escapejs }}");
-      Plotly.newPlot("scatterMatrix", scatterData.data, scatterData.layout);
-    </script>
+    <h2>Actual vs. Predicted AQI</h2>
+    <img
+      src="data:image/png;base64,{{ scatter_actual_predicted_base64 }}"
+      alt="Actual vs. Predicted AQI"
+    />
 
-    <div>
-      <canvas id="rmseChart"></canvas>
-    </div>
-
-    <script>
-      var modelNames = {{ model_names|safe }};
-      var rmseValues = {{ rmse_values|safe }};
-
-      var rmseCtx = document.getElementById('rmseChart').getContext('2d');
-      new Chart(rmseCtx, {
-          type: 'bar',
-          data: {
-              labels: modelNames,
-              datasets: [{
-                  label: 'RMSE',
-                  data: rmseValues,
-                  backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                  borderColor: 'rgba(255, 99, 132, 1)',
-                  borderWidth: 1
-              }]
-          },
-          options: {
-              scales: {
-                  y: {
-                      beginAtZero: true
-                  }
-              }
-          }
-      });
-    </script>
-
-    <div>
-      <canvas id="r2Chart"></canvas>
-    </div>
-
-    <script>
-      var r2Ctx = document.getElementById('r2Chart').getContext('2d');
-      new Chart(r2Ctx, {
-          type: 'bar',
-          data: {
-              labels: modelNames,
-              datasets: [{
-                  label: 'R² Score',
-                  data: {{ r2_values|safe }},
-                  backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                  borderColor: 'rgba(54, 162, 235, 1)',
-                  borderWidth: 1
-              }]
-          },
-          options: {
-              scales: {
-                  y: {
-                      beginAtZero: true,
-                      max: 1
-                  }
-              }
-          }
-      });
-    </script>
+    <h2>Model Performance</h2>
+    <p>Mean Squared Error: {{ mse }}</p>
+    <p>R-Squared Value: {{ r2 }}</p>
+    {% endif %}
   </body>
 </html>

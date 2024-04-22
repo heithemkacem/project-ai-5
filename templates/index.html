@@ -2,36 +2,53 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Air Quality Analysis</title>
+    <title>AQI Prediction Results</title>
   </head>
   <body>
-    <h1>Air Quality Analysis</h1>
+    <h1>AQI Prediction Results</h1>
 
     {% if error_message %}
-    <p>{{ error_message }}</p>
-    {% else %}
-    <h2>Correlation Heatmap</h2>
-    <img
-      src="data:image/png;base64,{{ heatmap_base64 }}"
-      alt="Correlation Heatmap"
-    />
+    <div style="color: red">{{ error_message }}</div>
+    {% endif %}
 
-    <h2>AQI Site vs. PM2.5</h2>
-    <img
-      src="data:image/png;base64,{{ scatter_base64 }}"
-      alt="AQI Site vs. PM2.5"
-    />
+    <h2>Model Evaluations</h2>
+    <ul>
+      {% for model_name, metrics in results.items %}
+      <li>
+        <strong>{{ model_name }}</strong>
+        <ul>
+          <li>Mean Squared Error: {{ metrics.MSE }}</li>
+          <li>R-squared: {{ metrics.R_squared }}</li>
+        </ul>
+      </li>
+      {% endfor %}
+    </ul>
 
     <h2>Actual vs. Predicted AQI</h2>
     <img
-      src="data:image/png;base64,{{ scatter_actual_predicted_base64 }}"
-      alt="Actual vs. Predicted AQI"
+      src="data:image/png;base64,{{ scatter_base64 }}"
+      alt="Scatter Plot of Actual vs. Predicted AQI"
     />
 
-    <h2>Model Performance</h2>
-    <p>Mean Squared Error: {{ mse }}</p>
-    <p>R-Squared Value: {{ r2 }}</p>
-    {% endif %}
+    <h2>Correlation Matrix</h2>
+    <img
+      src="data:image/png;base64,{{ corr_matrix_base64 }}"
+      alt="Correlation Matrix"
+    />
+
+    <h2>Feature Importances (Random Forest)</h2>
+    <img
+      src="data:image/png;base64,{{ feature_importance_base64 }}"
+      alt="Feature Importances by Random Forest"
+    />
+
+    <h2>Histograms of Features</h2>
+    {% for feature, image_base64 in histogram_images.items %}
+    <h3>{{ feature }}</h3>
+    <img
+      src="data:image/png;base64,{{ image_base64 }}"
+      alt="Histogram of {{ feature }}"
+    />
+    {% endfor %}
   </body>
 </html>

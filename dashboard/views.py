@@ -1,76 +1,71 @@
 from django.shortcuts import render
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, r2_score
-import json
+import plotly.express as px
+import joblib
 
 def index(request):
     try:
-        # Load the dataset
-        air_quality_data = pd.read_csv('updated_air_quality_data_with_AQI.csv')
+        # Load the data
+        data = pd.read_csv("AQI.csv")
+        data.dropna(axis=0, inplace=True)
 
-        # Process the DateTime and set as index
-        air_quality_data['Time'] = air_quality_data['Time'].str.replace('.', ':', regex=False)
-        air_quality_data['DateTime'] = pd.to_datetime(air_quality_data['Date'] + ' ' + air_quality_data['Time'], format='%d/%m/%Y %H:%M:%S')
-        air_quality_data.set_index('DateTime', inplace=True)
-        air_quality_data.drop(['Date', 'Time'], axis=1, inplace=True)
+        # Convert date to datetime
+        data['Date'] = pd.to_datetime(data['Date'])
 
-        # Extract time features
-        air_quality_data['Hour'] = air_quality_data.index.hour
-        air_quality_data['Weekday'] = air_quality_data.index.weekday
-        air_quality_data['Month'] = air_quality_data.index.month
+        # Preparing data for modeling
+        feature_columns = ['PM2.5', 'PM10', 'NO', 'NO2', 'NOx', 'NH3', 'CO', 'SO2', 'O3', 'Benzene', 'Toluene', 'Xylene']
+        X = data[feature_columns]
+        y = data['AQI']
 
-        # Select relevant features and the target variable
-        features = ['CO(GT)', 'NO2(GT)', 'Hour', 'Weekday']  # Example features
-        X = air_quality_data[features]
-        y = air_quality_data['Overall_AQI']  # Target variable
-
-        # Split into training and test sets
+        # Splitting the data
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Initialize and train models
+        # Standardizing the features
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+
+        # Defining models
         models = {
             'Linear Regression': LinearRegression(),
             'Random Forest': RandomForestRegressor(random_state=42),
             'Gradient Boosting': GradientBoostingRegressor(random_state=42)
         }
 
-        # Dictionary to hold model evaluation results
-        model_results = {}
-
-        # Train, predict, and evaluate models
+        # Training and evaluating models
+        results = {}
         for name, model in models.items():
-            model.fit(X_train, y_train)
-            y_pred = model.predict(X_test)
+            model.fit(X_train_scaled, y_train)
+            y_pred = model.predict(X_test_scaled)
             mse = mean_squared_error(y_test, y_pred)
-            rmse = mse ** 0.5
+            rmse = np.sqrt(mse)
             r2 = r2_score(y_test, y_pred)
+            results[name] = {'RMSE': rmse, 'R²': r2}
 
-            # Store results in the dictionary
-            model_results[name] = {'RMSE': rmse, 'R2': r2}
+        # Save the best model
+        best_model_name = min(results, key=lambda x: results[x]['RMSE'])
+        best_model = models[best_model_name]
+        joblib.dump(best_model, 'best_model.pkl')
 
-        # Get actual AQI and predicted AQI values
-        actual_aqi = y_test.tolist()
-        predicted_aqi = {model_name: y_pred.tolist() for model_name, y_pred in zip(models.keys(), [model.predict(X_test) for model in models.values()])}
-
-        # Prepare data to send to template
-        model_names = list(models.keys())
-        rmse_values = [result['RMSE'] for result in model_results.values()]
-        r2_values = [result['R2'] for result in model_results.values()]
-
-        # Pass data to the template
+        # Prepare data for the template
         context = {
-            'model_names': model_names,
-            'rmse_values': rmse_values,
-            'r2_values': r2_values,
-            'actual_aqi': actual_aqi,
-            'predicted_aqi': predicted_aqi
+            'plotly_line_json': px.line(data, x='Date', y='AQI', color='City', title='AQI Trend Over Time').to_json(),
+            'plotly_box_json': px.box(data, x='City', y='AQI', title='AQI Distribution by City').to_json(),
+            'scatter_matrix_json': px.scatter_matrix(data[['PM2.5', 'NO2', 'CO', 'O3', 'AQI']], title='Scatter Plot Matrix').to_json(),
+            'model_names': list(results.keys()),
+            'rmse_values': [results[model]['RMSE'] for model in results],
+            'r2_values': [results[model]['R²'] for model in results],
         }
 
     except Exception as e:
-        error_message = f"An error occurred: {str(e)}"
-        context = {'error': error_message}
+        context = {
+            'error_message': f"An error occurred: {str(e)}"
+        }
 
     return render(request, 'index.html', context)
